@@ -1,6 +1,6 @@
 # Local Music-Lib
 ## About this project
-This is a small personal project which helps manage a local music library. It features a simple **ArgumentParser** interface with three main modes: 
+This is a small personal project which helps manage a local music library. The folder structure is catered towards a structure that is most functional with the [**Navidrome**](https://github.com/navidrome/navidrome) self-hosted server (tested and running on the developer's machine). It features a simple **ArgumentParser** interface with three main modes: 
 
 1. `move`  
 └── moves files in a batch from a source directory to a destination directory.
