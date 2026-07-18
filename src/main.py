@@ -1,9 +1,15 @@
 from src.move import musiclib_move
 from src.sort import musiclib_sort
 from argparse import ArgumentParser
-from re import fullmatch
+from platform import system
+from re import compile
 
-PATH_REGEX = r"^[a-zA-Z]{1}:{1}[\\/]{1}([\w.-]+(\s+[\w.-]+)*[\\/]?)*$"
+if system() == "Windows":
+  PATH_REGEX = r"^[a-zA-Z]:[\\/]([\w.-]+(\s+[\w.-]+)*[\\/]?)*$"
+elif system() == "Linux":
+  PATH_REGEX = r"^/([\w.-]+(\s+[\w.-]+)*/?)*$"
+
+COMPILED_REGEX = compile(PATH_REGEX)
 
 def main():
   path_ok: dict[str, bool] = {}
@@ -30,8 +36,8 @@ def main():
   args = parser.parse_args()
 
   if args.command == "move":
-    path_ok[args.src] = True if fullmatch(PATH_REGEX, args.src) else False
-    path_ok[args.dst] = True if fullmatch(PATH_REGEX, args.dst) else False
+    path_ok[args.src] = True if COMPILED_REGEX.fullmatch(args.src) else False
+    path_ok[args.dst] = True if COMPILED_REGEX.fullmatch(args.dst) else False
     
     for key, val in path_ok.items():
       if not val:
@@ -41,7 +47,7 @@ def main():
     musiclib_move(src=args.src, dst=args.dst)
 
   elif args.command == "sort":
-    path_ok[args.dir] = True if fullmatch(PATH_REGEX, args.dir) else False
+    path_ok[args.dir] = True if COMPILED_REGEX.fullmatch(args.dir) else False
     
     for key, val in path_ok.items():
       if not val:
@@ -51,8 +57,8 @@ def main():
     musiclib_sort(dir=args.dir)
     
   elif args.command == "aio":
-    path_ok[args.src] = True if fullmatch(PATH_REGEX, args.src) else False
-    path_ok[args.dst] = True if fullmatch(PATH_REGEX, args.dst) else False
+    path_ok[args.src] = True if COMPILED_REGEX.fullmatch(args.src) else False
+    path_ok[args.dst] = True if COMPILED_REGEX.fullmatch(args.dst) else False
     
     for key, val in path_ok.items():
       if not val:
