@@ -31,6 +31,3 @@ def musiclib_move(src: str, dst: str):
             shutil.move(src_dir, dst_dir)
             
         remove_empty_folders(curr_root)
-
-if __name__ == "__main__":
-    musiclib_move()

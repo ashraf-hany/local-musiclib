@@ -112,6 +112,3 @@ def musiclib_sort(dir: str):
         
         # Remove deleted album's old empty folders
         remove_empty_folders(item.path)
-
-if __name__ == "__main__":
-  musiclib_sort()
