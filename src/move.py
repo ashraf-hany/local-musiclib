@@ -11,6 +11,7 @@ def musiclib_move(src: str, dst: str):
     # Add any other directories which will not be inspected
     ignored_dirs = [dst_root]
 
+    os.makedirs(src_root, exist_ok=True)
     os.makedirs(dst_root, exist_ok=True)
 
     for curr_root, sub_dirs, items in os.walk(src_root):

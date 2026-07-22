@@ -26,20 +26,27 @@ $ pip install -r ./env/requirements.txt
 ### 1. Move mode
 To move files from a source directory to a destination directory, use the following command:
 ```bash
-$ python -m src.main move --src "/path/to/source" --dst "/path/to/destination"
+$ python -m src.main move "/path/to/source" "/path/to/destination"
 ```
 
 ### 2. Sort mode
 To sort files in a directory based on their metadata and fetch lyrics, use the following command:
 ```bash
-$ python -m src.main sort --dir "/path/to/directory"
+$ python -m src.main sort "/path/to/directory"
 ```
 
 ### 3. All-in-one mode
 To move files from a source directory to a destination directory and sort the destination directory in a single command, use the following command:
 ```bash
-$ python -m src.main aio --src "/path/to/source" --dst "/path/to/destination"
+$ python -m src.main aio "/path/to/source" "/path/to/destination"
 ```
+
+### 4. Multiple command execution mode
+To execute multiple commands in a single run, you can simply chain them together by typing each command one after the other with its respective arguments. They will execute in the order they are provided.
+```bash
+$ python -m src.main move "/path/to/source1" "/path/to/destination1" sort "/path/to/directory2" aio "/path/to/source3" "/path/to/destination3" ...
+```
+
 ## Future plans
 1. Implement a GUI to facilitate selecting the relevant user inputs (mode, directories) instead of using command line arguments.
 2. Add disc number to the sorting criteria.

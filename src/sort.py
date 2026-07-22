@@ -10,6 +10,8 @@ BAD_CHARACTERS = "\\/:*?\"|<>"
 def musiclib_sort(dir: str):
   dir_root = Path(dir)
   
+  os.makedirs(dir_root, exist_ok=True)
+  
   api = LrcLibAPI(user_agent="local-musiclib/1.0.0")
 
   with os.scandir(dir_root) as items:
