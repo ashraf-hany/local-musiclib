@@ -8,7 +8,7 @@ def musiclib_move(src: str, dst: str):
     src_root = Path(src)
     dst_root = Path(dst)
     
-    # Add any other directories which will not be inspected
+    # Add other directories which will not be inspected
     ignored_dirs = [dst_root]
 
     os.makedirs(src_root, exist_ok=True)
@@ -18,12 +18,15 @@ def musiclib_move(src: str, dst: str):
         ## Don't modify anything in the ignored directories, or children of the destination root
         if curr_root in ignored_dirs or Path(curr_root).resolve().is_relative_to(dst_root):
             continue
-        
-        ## Check if current root has children (bad practice, but works for soulseekqt/nicotine, should check for files in each root before moving)
+        ## Check if current root has children (bad practice, but works for soulseekqt/nicotine)
+        ## -------------------------------------------------
+        ## Should check for files in each root before moving
+        ## -------------------------------------------------
         if sub_dirs:
             continue
-        
-        ## Check if items are .flac files only
+        ## ------------------------------------------
+        ## Should check if items are .flac files only
+        ## ------------------------------------------
         src_dirs = [os.path.join(curr_root, item) for item in items]
         dst_dirs = [os.path.join(dst_root, item) for item in items]
         

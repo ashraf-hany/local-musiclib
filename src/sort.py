@@ -3,16 +3,41 @@ from src.utils import sanitize_name, remove_empty_folders
 from math import ceil
 from pathlib import Path
 from lrclib import LrcLibAPI
+from time import sleep
 import os
+import requests
 
 BAD_CHARACTERS = "\\/:*?\"|<>"
+GET_ENDPOINT_URL = "https://lrclib.net/api/get"
+LYRICS_EXTENSIONS = [
+  'yaml',
+  'yml',
+  'lrc',
+  'txt'
+]
 
 def musiclib_sort(dir: str):
   dir_root = Path(dir)
   
   os.makedirs(dir_root, exist_ok=True)
   
-  api = LrcLibAPI(user_agent="local-musiclib/1.0.0")
+  # ----------------------------------------------------
+  # Will probably be used for /api/search endpoint later
+  # ----------------------------------------------------
+  # api = LrcLibAPI(user_agent="local-musiclib/1.1.0")
+  
+  req = {
+    "url": GET_ENDPOINT_URL,
+    "headers": {
+        "User-Agent": "local-musiclib/1.1.0"
+      },
+    "params": {
+      "track_name": "",
+      "artist_name": "",
+      "album_name": "",
+      "duration": 0,
+    }
+  }
 
   with os.scandir(dir_root) as items:
     for item in items:
@@ -50,42 +75,73 @@ def musiclib_sort(dir: str):
         # --- Part 3 of the script ---
         # Search for lyrics using lrclibapi, clear embedded LYRICS tag if exists, don't search for lyrics if file already exists
         lyrics_path = dst_path.parent / dst_path.stem
-        exist_paths = [Path(str(lyrics_path) + '.lrc').exists(), Path(str(lyrics_path) + '.txt').exists()]
+        
+        exist_paths = [
+          f"{lyrics_path}.{ext}" for ext in LYRICS_EXTENSIONS
+        ]
+        
+        exist_paths = [
+          Path(path).exists() for path in exist_paths
+        ]
+        
+        title = sanitize_name(metadata["TITLE"][0], blacklist=BAD_CHARACTERS)
+        artist = sanitize_name(metadata["ARTIST"][0], blacklist=BAD_CHARACTERS)
+        album = sanitize_name(metadata["ALBUM"][0], blacklist=BAD_CHARACTERS)
+        duration = ceil(metadata.info.length)
+        
+        log_identifier = f"{artist}/{album}/{title} ({int(duration / 60)}:{str(duration % 60).zfill(2)})"
         
         if not any(exist_paths):
-          try:
-            title = sanitize_name(metadata["TITLE"][0], blacklist=BAD_CHARACTERS)
-            artist = sanitize_name(metadata["ARTIST"][0], blacklist=BAD_CHARACTERS)
-            album = sanitize_name(metadata["ALBUM"][0], blacklist=BAD_CHARACTERS)
-            duration = ceil(metadata.info.length)
-            
-            lyrics = api.get_lyrics(
-              track_name=title,
-              album_name=album,
-              artist_name=artist,
-              duration=duration
-            )
-            
-            # Failsafe for if lyrics are none (put as instrumental)
-            print(f"---- SEARCHING LYRICS FOR {artist}/{album}/{title} ({int(duration / 60)}:{str(duration % 60).zfill(2)}) ----")
-            
-            lyrics = lyrics.synced_lyrics or lyrics.plain_lyrics
-            
-            if lyrics is None:
+          print(f"\n\u27a1  SEARCHING LYRICS FOR {log_identifier}")
+
+          req["params"]["track_name"] = title
+          req["params"]["artist_name"] = artist
+          req["params"]["album_name"] = album
+          req["params"]["duration"] = duration
+          
+          resp = requests.get(
+            url=req["url"],
+            headers=req["headers"],
+            params=req["params"],
+          )
+          
+          # Wait 500ms before the next request to respect rate limiting
+          sleep(0.5)
+          
+          track_data = resp.json()
+          extension = ""
+          
+          if resp.status_code == 200:
+            if track_data.get("instrumental"):
+              print(f"\t└──[INSTRUMENTAL]")
               lyrics = '[Instrumental]'
-            
-            print(f"---- FOUND {'SYNCED' if '[' in lyrics else 'PLAIN'} LYRICS. ----\n")
-            
-            extension = str('.lrc' if '[' in lyrics else '.txt') or '.lrc'
-            
-            lyrics_path = Path(str(lyrics_path) + extension)
-            
-            if not lyrics_path.exists():
-              with open(lyrics_path, 'w', encoding='utf-8') as file:
-                if lyrics:
-                  file.write(lyrics)
+              extension = LYRICS_EXTENSIONS[2] # .lrc
+            else:
+              if track_data.get("lyricsfile"):
+                print(f"\t└──[FOUND LYRICSFILE]")
+                lyrics = track_data.get("lyricsfile")
+                extension = LYRICS_EXTENSIONS[0] # .yaml
+              else:
+                print("\t└──[COULDN'T FIND LYRICSFILE, SEARCHING FOR SYNCEDLYRICS]...")
+                if track_data.get("syncedLyrics"):
+                  print(f"\t\t└──[FOUND SYNCEDLYRICS]")
+                  lyrics = track_data.get("syncedLyrics")
+                  extension = LYRICS_EXTENSIONS[2] # .lrc
                 else:
-                  file.write('[Instrumental]')
+                  print("\t\t└──[COULDN'T FIND SYNCEDLYRICS, SEARCHING FOR PLAINLYRICS]...")
+                  if track_data.get("plainLyrics"):
+                    print("\t\t\t└──[FOUND PLAINLYRICS]")
+                    lyrics = track_data.get("syncedLyrics")
+                    extension = LYRICS_EXTENSIONS[3] # .txt
+                  else:
+                    print("\t\t\t└──[COULDN'T FIND PLAINLYRICS, DEFAULTING TO INSTRUMENTAL]")
+                    lyrics = '[Instrumental]'
+                    extension = LYRICS_EXTENSIONS[2] # .lrc
+            
+            lyrics_path = Path(f"{lyrics_path}.{extension}")
+            
+            with open(lyrics_path, 'w', encoding='utf-8') as file:
+              file.write(lyrics)
             
             metadata = FLAC(dst_path)
             
@@ -94,15 +150,20 @@ def musiclib_sort(dir: str):
             metadata.pop('UNSYNCEDLYRICS', None)
             
             metadata.save()
-          except Exception as _:
-            print(f"Couldn't find lyrics for {artist}/{album}/{title} ({int(duration / 60)}:{str(duration % 60).zfill(2)}), replacing with default lyrics file")
-            
-            lyrics_path = Path(str(lyrics_path) + '.lrc')
+          
+          elif resp.status_code == 404:
+            print(f"\t└──[COULDN'T FIND LYRICS FOR {log_identifier}), DEFAULTING TO INSTRUMENTAL]...")
+            ## ------------------------------------------------
+            ## Maybe prompt user to resort to /api/search here?
+            ## ------------------------------------------------
+            lyrics = '[Instrumental]'
+            extension = LYRICS_EXTENSIONS[2] # .lrc
+            lyrics_path = Path(f"{lyrics_path}.{extension}") # .lrc
             with open(lyrics_path, 'w', encoding='utf-8') as file:
-                file.write('[Instrumental]')
+                file.write(lyrics)
         
         else:
-          print(f'Lyrics already exists for {dst_path.stem}')
+          print(f'\n\u27a1  LYRICS ALREADY EXIST FOR {log_identifier}, SKIPPING...')
       # --- Part 4 of the script ---
       # Remove deleted songs' old empty folders
       elif item.is_dir():
