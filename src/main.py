@@ -87,9 +87,8 @@ def main():
               musiclib_aio(src=args.src, dst=args.dst)
       
       else:
+        # Intentionally crash the program
         exit("Please re-run the script providing the required arguments. Type in -h for more info.")
-        
-    # Intentionally crash the program
     else:
       parser.parse_args()
   
